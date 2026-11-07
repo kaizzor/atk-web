@@ -1,15 +1,13 @@
-// out.js
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("✅ out.js loaded"); // buat debug
+  console.log("✅ out.js loaded"); 
 
-  const API = "http://localhost:3000";
+const API = window.location.origin; 
   const rowsContainer = document.getElementById("rows");
   const errorEl = document.getElementById("outError");
   const sidebarUsername = document.getElementById("sidebarUsername");
   const btnAddRow = document.getElementById("btnAddRow");
   const btnSubmit = document.getElementById("btnSubmit");
 
-  // ---------- Auth + sidebar ----------
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   if (user.username) {
     document.title = user.username + " Stock Out";
@@ -37,7 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ---------- Helper ----------
   async function getJSON(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error(res.status + " " + res.statusText);
@@ -127,7 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const rowEl = rowsContainer.lastElementChild;
     await hydrate(rowEl);
     
-    // Pastikan input catatan di row baru bisa digunakan
     const noteInput = rowEl.querySelector('.note-input');
     if (noteInput) {
       noteInput.removeAttribute('disabled');
@@ -138,7 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
       noteInput.style.opacity = '1';
       noteInput.style.background = '';
       
-      // Pastikan input bisa difokuskan
       noteInput.addEventListener('focus', function() {
         this.style.outline = '2px solid #ec4899';
       });
@@ -146,7 +141,6 @@ document.addEventListener("DOMContentLoaded", () => {
         this.style.outline = '';
       });
       
-      // Test: pastikan input bisa diklik
       noteInput.addEventListener('click', function(e) {
         e.stopPropagation();
         this.focus();
@@ -154,7 +148,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---------- Initial load items + suppliers ----------
   (async function initItems() {
     try {
       const itemsRes = await getJSON(`${API}/items`);
@@ -189,10 +182,8 @@ document.addEventListener("DOMContentLoaded", () => {
     addRow();
   })();
 
-  // ---------- Event: Add Row ----------
   btnAddRow?.addEventListener("click", addRow);
 
-  // ---------- Submit Handler ----------
   document.getElementById("btnSubmit")?.addEventListener("click", async () => {
     if (!errorEl) return;
     errorEl.textContent = '';
@@ -262,9 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-// ====== Profile Modal Logic ======
 document.addEventListener('DOMContentLoaded', function() {
-  const API = "http://localhost:3000";
   const profileBtn = document.getElementById('profileBtn');
   const profileModal = document.getElementById('profileModal');
   const profileClose = document.getElementById('profileClose');
@@ -295,23 +284,38 @@ document.addEventListener('DOMContentLoaded', function() {
     if (profileEmailInputEl) profileEmailInputEl.value = u.email || '';
     if (profilePasswordInputEl) profilePasswordInputEl.value = '';
 
-    const avatarFilename = u.avatar || null;
+    
+    const avatarUrl = u.avatar || null;
     const pImg = document.getElementById('profileAvatar');
     const pPlaceholder = document.getElementById('profileAvatarPlaceholder');
 
-    if (avatarFilename) {
-      const avatarUrl = `${API}/uploads/${avatarFilename}`;
+    if (avatarUrl) {
       if (pImg) {
         pImg.src = avatarUrl;
         pImg.classList.remove('hidden');
       }
       if (pPlaceholder) pPlaceholder.classList.add('hidden');
-      const profileBtn = document.getElementById('profileBtn');
-      if (profileBtn) profileBtn.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>`;
+
+      if (profileBtn) {
+        profileBtn.innerHTML = `
+          <img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>
+        `;
+      }
+      if (pImg && pPlaceholder) {
+            pImg.src = avatarUrl;
+            pImg.classList.remove('hidden');
+            pPlaceholder.classList.add('hidden');
+          }
+      if (profileAvatar) {
+        profileAvatar.src = avatarUrl;
+        profileAvatar.classList.remove('hidden');
+      }
+      if (profilePlaceholder) {
+        profilePlaceholder.classList.add('hidden');
+      }
     } else {
       if (pImg) pImg.classList.add('hidden');
       if (pPlaceholder) pPlaceholder.classList.remove('hidden');
-      const profileBtn = document.getElementById('profileBtn');
       if (profileBtn) profileBtn.innerHTML = '👤';
     }
 
@@ -394,30 +398,25 @@ document.addEventListener('DOMContentLoaded', function() {
       const sb = document.getElementById('sidebarUsername');
       if (sb) sb.textContent = data.user.username;
       
-      const profileBtn = document.getElementById('profileBtn');
+      const avatarUrl = data.user.avatar;
+
       if (profileBtn) {
-          if (data.user.avatar) {
-              const avatarUrl = `${API}/uploads/${data.user.avatar}`;
-              profileBtn.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>`;
-              const pImg = document.getElementById('profileAvatar');
-              const pPlaceholder = document.getElementById('profileAvatarPlaceholder');
-              if (pImg && pPlaceholder) {
-                pImg.src = avatarUrl;
-                pImg.classList.remove('hidden');
-                pPlaceholder.classList.add('hidden');
-              }
-          } else {
-              profileBtn.innerHTML = '👤';
+        if (avatarUrl) {
+          profileBtn.innerHTML = `
+            <img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>
+          `;
+          if (pImg && pPlaceholder) {
+            pImg.src = avatarUrl;
+            pImg.classList.remove('hidden');
+            pPlaceholder.classList.add('hidden');
           }
+        } else {
+          profileBtn.innerHTML = '👤';
+        }
       }
       
       alert('Profil berhasil diperbarui!');
       closeProfile();
-    } catch (err) {
-      if (profileError) {
-        profileError.textContent = 'Terjadi kesalahan koneksi.';
-        profileError.classList.remove('hidden');
-      }
     } finally {
       profileSaveBtn.disabled = false;
       profileSaveBtn.textContent = prevText;
@@ -428,18 +427,34 @@ document.addEventListener('DOMContentLoaded', function() {
     profileFotoInput?.click();
   });
 
-  // Load profile avatar on page load
+  profileFotoInput?.addEventListener('change', function () {
+    if (this.files && this.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (profileAvatar) {
+          profileAvatar.src = e.target.result; 
+          profileAvatar.classList.remove('hidden');
+        }
+        if (profilePlaceholder) {
+          profilePlaceholder.classList.add('hidden');
+        }
+      };
+      reader.readAsDataURL(this.files[0]);
+    }
+  });
+
   (function() {
     const u = JSON.parse(localStorage.getItem('user') || '{}');
     const profileBtn = document.getElementById('profileBtn');
     if (profileBtn && u.avatar) {
-      const avatarUrl = `${API}/uploads/${u.avatar}`;
-      profileBtn.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>`;
+      const avatarUrl = u.avatar;
+        profileBtn.innerHTML = `
+          <img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>
+        `;
     }
   })();
-});
+})();
 
-// ====== Mobile Menu Functionality ======
 document.addEventListener('DOMContentLoaded', function() {
   const mobileMenuBtn = document.getElementById('mobileMenuBtn');
   const sidebar = document.getElementById('sidebar');

@@ -1,3 +1,5 @@
+const API = window.location.origin;
+
 window.addEventListener("DOMContentLoaded", async () => {
   const elItem  = document.getElementById("totalItem");
   const elStok  = document.getElementById("totalStok");
@@ -17,8 +19,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   const addSupplierError   = document.getElementById("addSupplierError");
   const cancelAddSupplier  = document.getElementById("cancelAddSupplier");
 
-
-  const API = "http://localhost:3000";
   const rupiah = (n) =>
     new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -47,7 +47,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
-  // --- SUPPLIER ROW: nama + kontak + alamat ---
   function supplierRow(s) {
     const name   = s?.namaSupplier || s?.nama || s?.name || "-";
     const kontak = s?.kontak || s?.telepon || s?.phone || "-";
@@ -72,10 +71,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   let cachedItems = [];
-  let cachedSuppliers = null; // null = belum pernah load
+  let cachedSuppliers = null; 
   let dashCache   = { totalItem: 0, totalStok: 0, totalHarga: 0 };
-
-  // cache statistik tambahan (untuk print + summary)
   let extraStatsCache = {
     totalKategori: 0,
     totalSupplier: 0,
@@ -85,11 +82,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     profitToday: 0,
   };
 
-  // ------- Initial load: dashboard + products (dipisah supaya tidak saling merusak) -------
 try {
   const dash = await getJSON(`${API}/dashboard`);
-
-  // Update dashboard
   dashCache = {
     totalItem : dash.totalItem  ?? 0,
     totalStok : dash.totalStok  ?? 0,
@@ -101,7 +95,6 @@ try {
   if (elStok)  elStok.textContent  = dashCache.totalStok;
   if (elHarga) elHarga.textContent = rupiah(dashCache.totalHarga);
 
-  // Update kategori langsung dari backend
   const statKategoriEl = document.getElementById("statKategori");
   if (statKategoriEl) {
     statKategoriEl.textContent = dashCache.totalKategori;
@@ -114,7 +107,6 @@ try {
   console.error("Dashboard error:", err);
 }
 
-// Load list products (AMAN dari error dashboard)
 if (listProductsEl) {
   try {
     const itemsRes = await getJSON(`${API}/items`);
@@ -127,7 +119,6 @@ if (listProductsEl) {
   }
 }
 
-  // ------- Tabs behavior -------
   function setActiveTab(tab) {
     const activeAdd       = ["bg-pink-500","text-white"];
     const activeRemove    = ["text-pink-600","hover:bg-pink-50"];
@@ -135,33 +126,27 @@ if (listProductsEl) {
     const inactiveRemove  = ["bg-pink-500","text-white"];
 
     if (tab === "products") {
-      // products -> aktif
       tabProducts.classList.add(...activeAdd);
       tabProducts.classList.remove(...activeRemove);
-      // suppliers -> non-aktif
       tabSuppliers.classList.add(...inactiveAdd);
       tabSuppliers.classList.remove(...inactiveRemove);
 
       listProductsEl?.classList.remove("hidden");
       listSuppliersEl?.classList.add("hidden");
 
-      // alat supplier di-hide
       supplierTools?.classList.add("hidden");
       addSupplierBox?.classList.add("hidden");
     } else if (tab === "suppliers") {
-      // suppliers -> aktif
       tabSuppliers.classList.add(...activeAdd);
       tabSuppliers.classList.remove(...activeRemove);
-      // products -> non-aktif
       tabProducts.classList.add(...inactiveAdd);
       tabProducts.classList.remove(...inactiveRemove);
 
       listSuppliersEl?.classList.remove("hidden");
       listProductsEl?.classList.add("hidden");
 
-      // alat supplier hanya muncul di tab ini
       supplierTools?.classList.remove("hidden");
-      addSupplierBox?.classList.add("hidden"); // form hanya muncul kalau tombol + diklik
+      addSupplierBox?.classList.add("hidden"); 
     }
   }
 
@@ -169,7 +154,6 @@ if (listProductsEl) {
 async function ensureSuppliersLoaded() {
   if (!listSuppliersEl) return;
 
-  // Kalau data supplier sudah ada di cache, tinggal render ke UI
   if (cachedSuppliers !== null) {
     const suppliers = cachedSuppliers;
 
@@ -182,7 +166,6 @@ async function ensureSuppliersLoaded() {
     return;
   }
 
-  // Kalau belum pernah load sama sekali, fetch ke backend
   try {
     const resp = await getJSON(`${API}/suppliers`);
     const suppliers = resp?.suppliers || resp || [];
@@ -195,7 +178,7 @@ async function ensureSuppliersLoaded() {
       listSuppliersEl.innerHTML = suppliers.map(supplierRow).join("");
     }
   } catch (e) {
-    cachedSuppliers = []; // tandai sudah coba, tapi gagal
+    cachedSuppliers = []; 
     listSuppliersEl.innerHTML =
       `<li class="text-gray-500">
         Belum ada data supplier atau endpoint belum tersedia.
@@ -252,7 +235,6 @@ async function ensureSuppliersLoaded() {
       const data = await res.json();
       const newSupplier = data.supplier || data.data || data;
 
-      // update cache & list
       if (!Array.isArray(cachedSuppliers)) cachedSuppliers = [];
       cachedSuppliers.push(newSupplier);
       if (listSuppliersEl) {
@@ -277,10 +259,8 @@ async function ensureSuppliersLoaded() {
     setActiveTab("suppliers");
   });
 
-  // default: products tab
   setActiveTab("products");
 
-  // ------- Print (produk saja) -------
   function fillPrintSummary(dash, extra = extraStatsCache) {
     const pItem   = document.getElementById("pTotalItem");
     const pStok   = document.getElementById("pTotalStok");
@@ -311,7 +291,6 @@ function buildPrintTable(items) {
   const tbody = document.querySelector("#printTable tbody");
   if (!tbody) return;
 
-  // Buat map supid -> object supplier
   const supplierMap = {};
   if (Array.isArray(cachedSuppliers)) {
     cachedSuppliers.forEach((s) => {
@@ -324,14 +303,12 @@ function buildPrintTable(items) {
 
   tbody.innerHTML = items
     .map((p, i) => {
-      // coba pakai nama yang sudah di-join dulu (kalau memang ada)
       let supplierName =
         p.namaSupplier ||
         p.supplierName ||
         p.supplier ||
         "";
 
-      // kalau belum ada nama, coba cari berdasarkan id supplier di item
       if (!supplierName && Object.keys(supplierMap).length > 0) {
         const supKey =
           p.supid ??
@@ -367,8 +344,6 @@ function buildPrintTable(items) {
     .join("");
 }
 
-
-  // ====== Statistik Tambahan ======
   async function loadExtraStats() {
     const statKategoriEl     = document.getElementById("statKategori");
     const statSupplierEl     = document.getElementById("statSupplier");
@@ -381,7 +356,6 @@ function buildPrintTable(items) {
     const chartPopularEl     = document.getElementById("chartPopular");
     const lowStockListEl     = document.getElementById("lowStockList");
 
-    // kalau semua elemen ini tidak ada (misal file dipakai di halaman lain), jangan lanjut
     if (
       !statKategoriEl &&
       !statSupplierEl &&
@@ -398,7 +372,6 @@ function buildPrintTable(items) {
     }
 
     try {
-      // Gunakan endpoint backend yang tersedia
       const [itemsRes, suppliersRes, txTodayRes, txSummaryTodayRes, txRes] = await Promise.all([
         getJSON(`${API}/items`),
         getJSON(`${API}/suppliers`),
@@ -413,9 +386,6 @@ cachedSuppliers = suppliers;
 const txRows =
   txRes.transactions || txRes.items || txRes.data || txRes || [];
 
-
-      // --- Summary: kategori, supplier ---
-      // Kategori sudah diambil dari /dashboard, skip jika sudah ada
       if (statKategoriEl && (!statKategoriEl.textContent || statKategoriEl.textContent === "...")) {
         const kategoriSet = new Set(
           items
@@ -433,17 +403,14 @@ const txRows =
         statSupplierEl.textContent = totalSupplier;
       }
 
-      // --- Transaksi hari ini dari endpoint backend ---
       const txTodayCount = txTodayRes.total || 0;
       extraStatsCache.txToday = txTodayCount;
       if (statTxTodayEl) {
         statTxTodayEl.textContent = txTodayCount;
       }
 
-      // --- Pemasukan, pengeluaran, profit dari endpoint summary today ---
-      // Backend sudah benar: pemasukan = OUT (penjualan), pengeluaran = IN (pembelian)
-      const incomeToday = txSummaryTodayRes.pemasukan || 0;  // OUT = penjualan = pemasukan
-      const outcomeToday = txSummaryTodayRes.pengeluaran || 0;  // IN = pembelian = pengeluaran
+      const incomeToday = txSummaryTodayRes.pemasukan || 0;
+      const outcomeToday = txSummaryTodayRes.pengeluaran || 0;
       const profitToday = txSummaryTodayRes.profit || (incomeToday - outcomeToday);
 
       extraStatsCache.incomeToday = incomeToday;
@@ -460,7 +427,6 @@ const txRows =
         statProfitTodayEl.textContent = rupiah(profitToday);
       }
 
-      // --- Alert stok < 5 + daftar barang stok < 5 ---
       const lowStock = items.filter(
         (p) => Number(p.stok ?? p.stock ?? 0) < 5
       );
@@ -513,39 +479,28 @@ const txRows =
         }
       }
             
-// --- Grafik Weekly (Human Friendly + 3 garis: Total, IN, OUT) ---
 if (chartWeeklyEl && typeof Chart !== "undefined") {
-
-  // Parse tanggal dari backend (misal "01/12/2025" atau "2025-12-01")
   function parseDMY(str) {
     if (!str || typeof str !== "string") return new Date(str);
-
-    // coba format DD/MM/YYYY
     const parts = str.split("/");
     if (parts.length === 3) {
       const [day, month, year] = parts.map(Number);
       return new Date(year, month - 1, day);
     }
-
-    // fallback: biarkan Date coba parse
     return new Date(str);
   }
 
-  // Hitung info minggu dari sebuah tanggal
   function getWeekInfo(dateObj) {
     const d = new Date(dateObj);
-    const day = d.getDay() || 7; // Minggu = 7
+    const day = d.getDay() || 7; 
 
     const start = new Date(d);
-    start.setDate(d.getDate() - (day - 1)); // mundur ke Senin
+    start.setDate(d.getDate() - (day - 1));
 
     const end = new Date(start);
-    end.setDate(start.getDate() + 6); // sampai Minggu
+    end.setDate(start.getDate() + 6); 
+    const isoKey = start.toISOString().slice(0, 10); 
 
-    // key untuk sorting (ISO, aman di-sort string)
-    const isoKey = start.toISOString().slice(0, 10); // "2025-12-01"
-
-    // label yang ditampilkan di grafik
 const monthsShort = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
 const monthName = monthsShort[start.getMonth()];
 const label = `${start.getDate()}–${end.getDate()} ${monthName} ${start.getFullYear()}`;
@@ -554,7 +509,6 @@ return { isoKey, label };
 
   }
 
-  // weeklyObj: { isoKey: { label, total, in, out } }
   const weeklyObj = {};
 
   txRows.forEach((t) => {
@@ -569,13 +523,12 @@ return { isoKey, label };
       weeklyObj[isoKey] = { label, total: 0, in: 0, out: 0 };
     }
 
-    weeklyObj[isoKey].total += 1; // hitung per transaksi
+    weeklyObj[isoKey].total += 1; 
     if (type === "IN")  weeklyObj[isoKey].in  += 1;
     if (type === "OUT") weeklyObj[isoKey].out += 1;
   });
 
-  // Urutkan berdasarkan tanggal awal minggu (ISO asc → minggu paling awal di kiri)
-  const sortedKeys = Object.keys(weeklyObj).sort(); // "2025-12-01", "2025-12-08", ...
+  const sortedKeys = Object.keys(weeklyObj).sort(); 
 
   if (sortedKeys.length > 0) {
     const labels = sortedKeys.map((k) => weeklyObj[k].label);
@@ -617,14 +570,13 @@ return { isoKey, label };
           legend: { position: "top" },
         },
         scales: {
-x: {
-  ticks: {
-    autoSkip: false,     // jangan skip label, tampilin semua
-    maxRotation: 0,
-    minRotation: 0,
-  },
-},
-
+          x: {
+            ticks: {
+              autoSkip: false,     
+              maxRotation: 0,
+              minRotation: 0,
+            },
+          },
           y: {
             beginAtZero: true,
             ticks: { precision: 0 },
@@ -635,7 +587,6 @@ x: {
   }
 }
 
-      // --- Grafik Barang Paling Banyak IN / OUT (dipisah) ---
       if (chartPopularEl && typeof Chart !== "undefined") {
         const popularity = {};
         txRows.forEach((t) => {
@@ -665,7 +616,7 @@ x: {
             (a, b) =>
               (b[1].in + b[1].out) - (a[1].in + a[1].out)
           )
-          .slice(0, 10); // top 10 saja biar rapi
+          .slice(0, 10); 
 
         const labels = entries.map(([name]) => name);
         const dataIn  = entries.map(([, v]) => v.in);
@@ -680,12 +631,12 @@ x: {
                 {
                   label: "Total IN",
                   data: dataIn,
-                  backgroundColor: "#22c55e", // hijau
+                  backgroundColor: "#22c55e", 
                 },
                 {
                   label: "Total OUT",
                   data: dataOut,
-                  backgroundColor: "#ef4444", // merah
+                  backgroundColor: "#ef4444",
                 },
               ],
             },
@@ -721,12 +672,9 @@ x: {
     }
   }
 
-  // jalankan statistik tambahan
   loadExtraStats();
 
-  // ------- Print handler -------
 window.handlePrint = async function () {
-  // Pastikan data supplier sudah ada
   if (cachedSuppliers === null) {
     try {
       const resp = await getJSON(`${API}/suppliers`);
@@ -744,9 +692,7 @@ window.handlePrint = async function () {
 
 });
 
-// ====== Title/Auth/Active Link ======
 (function() {
-  const API = "http://localhost:3000";
   const userTitle = JSON.parse(localStorage.getItem('user') || '{}');
   if (userTitle.username) document.title = userTitle.username + ' Dashboard';
 
@@ -760,7 +706,6 @@ window.handlePrint = async function () {
     window.location.href = '../src/login.html';
   });
 
-  // ====== Active Link Highlighting ======
   const currentPage = location.pathname.split("/").pop();
   document.querySelectorAll("aside nav a").forEach(link => {
     const href = link.getAttribute("href");
@@ -768,7 +713,6 @@ window.handlePrint = async function () {
     else link.classList.remove("bg-pink-400","text-white","shadow");
   });
 
-  // ====== Mobile Menu Functionality ======
   document.addEventListener('DOMContentLoaded', function() {
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const sidebar = document.getElementById('sidebar');
@@ -793,14 +737,12 @@ window.handlePrint = async function () {
     function closeSidebar() {
       if (sidebar) {
         sidebar.classList.remove('mobile-open');
-        // Jangan reset display, biarkan CSS yang handle
       }
       if (mobileOverlay) mobileOverlay.classList.remove('active');
       document.body.style.overflow = '';
     }
 
     if (mobileMenuBtn) {
-      // Pastikan tombol bisa diklik
       mobileMenuBtn.style.pointerEvents = 'auto';
       mobileMenuBtn.style.zIndex = '101';
       mobileMenuBtn.style.position = 'fixed';
@@ -811,7 +753,6 @@ window.handlePrint = async function () {
         openSidebar();
       });
       
-      // Tambahkan juga mousedown untuk memastikan event terdeteksi
       mobileMenuBtn.addEventListener('mousedown', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -827,7 +768,6 @@ window.handlePrint = async function () {
       });
     }
 
-    // Close sidebar when clicking on nav links (mobile)
     document.querySelectorAll('aside nav a').forEach(link => {
       link.addEventListener('click', () => {
         if (window.innerWidth <= 1024) {
@@ -837,180 +777,219 @@ window.handlePrint = async function () {
     });
   });
 })();
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    const profileBtn = document.getElementById('profileBtn');
+    const profileModal = document.getElementById('profileModal');
+    const profileClose = document.getElementById('profileClose');
+    const profileLogout = document.getElementById('profileLogout');
+    const profileSave = document.getElementById('profileSave');
+    const profileCancel = document.getElementById('profileCancel');
+    const profileError = document.getElementById('profileError');
+    const profileFotoInput = document.getElementById('profileFotoInput');
+    const profileAvatar = document.getElementById('profileAvatar');
+    const profileAvatarContainer = document.getElementById('profileAvatarContainer');
+    const profilePlaceholder = document.getElementById('profileAvatarPlaceholder');
 
-// ====== Profile Modal Logic (Shared) ======
-document.addEventListener('DOMContentLoaded', function() {
-  const API = "http://localhost:3000";
-  const profileBtn = document.getElementById('profileBtn');
-  const profileModal = document.getElementById('profileModal');
-  const profileClose = document.getElementById('profileClose');
-  const profileLogout = document.getElementById('profileLogout');
-  const profileSave = document.getElementById('profileSave');
-  const profileCancel = document.getElementById('profileCancel');
-  const profileError = document.getElementById('profileError');
-  const profileFotoInput = document.getElementById('profileFotoInput');
-  const profileAvatar = document.getElementById('profileAvatar');
-  const profileAvatarContainer = document.getElementById('profileAvatarContainer');
-  const profilePlaceholder = document.getElementById('profileAvatarPlaceholder');
-
-  function openProfile() {
-    if (profileError) {
-      profileError.classList.add('hidden');
-      profileError.textContent = '';
-    }
-    if (profileFotoInput) profileFotoInput.value = '';
-
-    const u = JSON.parse(localStorage.getItem('user') || '{}');
-    const profileIdEl = document.getElementById('profileId');
-    const profileUsernameInputEl = document.getElementById('profileUsernameInput');
-    const profileEmailInputEl = document.getElementById('profileEmailInput');
-    const profilePasswordInputEl = document.getElementById('profilePasswordInput');
-
-    if (profileIdEl) profileIdEl.textContent = u.id || '-';
-    if (profileUsernameInputEl) profileUsernameInputEl.value = u.username || '';
-    if (profileEmailInputEl) profileEmailInputEl.value = u.email || '';
-    if (profilePasswordInputEl) profilePasswordInputEl.value = '';
-
-    const avatarFilename = u.avatar || null;
-    const pImg = document.getElementById('profileAvatar');
-    const pPlaceholder = document.getElementById('profileAvatarPlaceholder');
-
-    if (avatarFilename) {
-      const avatarUrl = `${API}/uploads/${avatarFilename}`;
-      if (pImg) {
-        pImg.src = avatarUrl;
-        pImg.classList.remove('hidden');
+    function renderSidebarProfile() {
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      const sidebarUsername = document.getElementById('sidebarUsername');
+      
+      if (sidebarUsername && u.username) {
+        sidebarUsername.textContent = u.username;
       }
-      if (pPlaceholder) pPlaceholder.classList.add('hidden');
-      const profileBtn = document.getElementById('profileBtn');
-      if (profileBtn) profileBtn.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>`;
-    } else {
-      if (pImg) pImg.classList.add('hidden');
-      if (pPlaceholder) pPlaceholder.classList.remove('hidden');
-      const profileBtn = document.getElementById('profileBtn');
-      if (profileBtn) profileBtn.innerHTML = '👤';
+      
+      if (profileBtn) {
+        if (u.avatar) {
+          profileBtn.innerHTML = `<img src="${u.avatar}" class="w-full h-full object-cover rounded-full"/>`;
+        } else {
+          profileBtn.innerHTML = '👤';
+        }
+      }
     }
 
-    if (profileModal) {
-      profileModal.classList.remove('hidden');
-      profileModal.classList.add('flex');
-      document.body.style.overflow = 'hidden';
+    function openProfile() {
+      if (profileError) {
+        profileError.classList.add('hidden');
+        profileError.textContent = '';
+      }
+      if (profileFotoInput) profileFotoInput.value = '';
+
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      const profileIdEl = document.getElementById('profileId');
+      const profileUsernameInputEl = document.getElementById('profileUsernameInput');
+      const profileEmailInputEl = document.getElementById('profileEmailInput');
+      const profilePasswordInputEl = document.getElementById('profilePasswordInput');
+
+      if (profileIdEl) profileIdEl.textContent = u.id || '-';
+      if (profileUsernameInputEl) profileUsernameInputEl.value = u.username || '';
+      if (profileEmailInputEl) profileEmailInputEl.value = u.email || '';
+      if (profilePasswordInputEl) profilePasswordInputEl.value = '';
+
+      if (u.avatar) {
+        if (profileAvatar) {
+          profileAvatar.src = u.avatar;
+          profileAvatar.classList.remove('hidden');
+        }
+        if (profilePlaceholder) {
+          profilePlaceholder.classList.add('hidden');
+        }
+      } else {
+        if (profileAvatar) profileAvatar.classList.add('hidden');
+        if (profilePlaceholder) profilePlaceholder.classList.remove('hidden');
+      }
+
+      if (profileModal) {
+        profileModal.classList.remove('hidden');
+        profileModal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+      }
     }
-  }
 
-  function closeProfile() {
-    if (profileModal) {
-      profileModal.classList.add('hidden');
-      profileModal.classList.remove('flex');
-      document.body.style.overflow = '';
+    function closeProfile() {
+      if (profileModal) {
+        profileModal.classList.add('hidden');
+        profileModal.classList.remove('flex');
+        document.body.style.overflow = '';
+      }
     }
-  }
 
-  profileBtn?.addEventListener('click', (e) => { e.preventDefault(); openProfile(); });
-  profileClose?.addEventListener('click', (e) => { e.preventDefault(); closeProfile(); });
-  profileCancel?.addEventListener('click', (e) => { e.preventDefault(); closeProfile(); });
-  profileModal?.addEventListener('click', (e) => { if (e.target === profileModal) closeProfile(); });
-
-  profileLogout?.addEventListener('click', (e) => { e.preventDefault(); localStorage.removeItem('user'); window.location.href = '../src/login.html'; });
-
-  profileSave?.addEventListener('click', async (e) => {
-    e.preventDefault();
-    if (profileError) profileError.classList.add('hidden');
+    profileBtn?.addEventListener('click', (e) => { 
+      e.preventDefault(); 
+      openProfile(); 
+    });
     
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const id = currentUser.id;
+    profileClose?.addEventListener('click', (e) => { 
+      e.preventDefault(); 
+      closeProfile(); 
+    });
+    
+    profileCancel?.addEventListener('click', (e) => { 
+      e.preventDefault(); 
+      closeProfile(); 
+    });
+    
+    profileModal?.addEventListener('click', (e) => { 
+      if (e.target === profileModal) closeProfile(); 
+    });
 
-    const usernameVal = document.getElementById('profileUsernameInput').value.trim();
-    const emailVal = document.getElementById('profileEmailInput').value.trim();
-    const passwordVal = document.getElementById('profilePasswordInput').value;
-    const newFoto = document.getElementById('profileFotoInput').files[0];
+    profileLogout?.addEventListener('click', (e) => { 
+      e.preventDefault(); 
+      localStorage.removeItem('user'); 
+      window.location.href = '../src/login.html'; 
+    });
 
-    if (!id) {
-      if (profileError) {
-        profileError.textContent = 'Error: User ID tidak ditemukan di penyimpanan lokal. Silakan coba login ulang.';
-        profileError.classList.remove('hidden');
-      }
-      return;
-    }
+    profileSave?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (profileError) profileError.classList.add('hidden');
+      
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const id = currentUser.id;
 
-    if (!usernameVal || !emailVal) {
-      if (profileError) {
-        profileError.textContent = 'Username dan email wajib diisi.';
-        profileError.classList.remove('hidden');
-      }
-      return;
-    }
+      const usernameVal = document.getElementById('profileUsernameInput')?.value.trim() || '';
+      const emailVal = document.getElementById('profileEmailInput')?.value.trim() || '';
+      const passwordVal = document.getElementById('profilePasswordInput')?.value || '';
+      const newFoto = profileFotoInput?.files[0];
 
-    const fd = new FormData();
-    fd.append("id", id);
-    fd.append("username", usernameVal);
-    fd.append("email", emailVal);
-    if (passwordVal) fd.append("password", passwordVal);
-    if (newFoto) fd.append("foto", newFoto);
-
-    const profileSaveBtn = e.target;
-    const prevText = profileSaveBtn.textContent;
-    profileSaveBtn.disabled = true;
-    profileSaveBtn.textContent = 'Saving...';
-
-    try {
-      const res = await fetch(`${API}/login/profile`, {
-        method: 'PATCH',
-        body: fd
-      });
-      const data = await res.json();
-      if (!res.ok) {
+      if (!id) {
         if (profileError) {
-          profileError.textContent = data.message || 'Gagal memperbarui profile.';
+          profileError.textContent = 'Error: User ID tidak ditemukan. Silakan login ulang.';
           profileError.classList.remove('hidden');
         }
         return;
       }
-      localStorage.setItem('user', JSON.stringify(data.user));
-      const sb = document.getElementById('sidebarUsername');
-      if (sb) sb.textContent = data.user.username;
-      
-      const profileBtn = document.getElementById('profileBtn');
-      if (profileBtn) {
-          if (data.user.avatar) {
-              const avatarUrl = `${API}/uploads/${data.user.avatar}`;
-              profileBtn.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>`;
-              const pImg = document.getElementById('profileAvatar');
-              const pPlaceholder = document.getElementById('profileAvatarPlaceholder');
-              if (pImg && pPlaceholder) {
-                pImg.src = avatarUrl;
-                pImg.classList.remove('hidden');
-                pPlaceholder.classList.add('hidden');
-              }
-          } else {
-              profileBtn.innerHTML = '👤';
+
+      if (!usernameVal || !emailVal) {
+        if (profileError) {
+          profileError.textContent = 'Username dan email wajib diisi.';
+          profileError.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append("id", id);
+      fd.append("username", usernameVal);
+      fd.append("email", emailVal);
+      if (passwordVal) fd.append("password", passwordVal);
+      if (newFoto) fd.append("foto", newFoto);
+
+      const profileSaveBtn = e.target;
+      const prevText = profileSaveBtn.textContent;
+      profileSaveBtn.disabled = true;
+      profileSaveBtn.textContent = 'Saving...';
+
+      try {
+        const res = await fetch(`${window.location.origin}/login/profile`, {
+          method: 'PATCH',
+          body: fd
+        });
+
+        const contentType = res.headers.get("content-type");
+        let data;
+
+        if (contentType && contentType.includes("application/json")) {
+          data = await res.json();
+        } else {
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          
+          const updatedUser = {
+            ...currentUser,
+            username: usernameVal,
+            email: emailVal,
+          };
+
+          if (profileAvatar && !profileAvatar.classList.contains("hidden")) {
+            updatedUser.avatar = profileAvatar.src;
           }
-      }
-      
-      alert('Profil berhasil diperbarui!');
-      closeProfile();
-    } catch (err) {
-      if (profileError) {
-        profileError.textContent = 'Terjadi kesalahan koneksi.';
-        profileError.classList.remove('hidden');
-      }
-    } finally {
-      profileSaveBtn.disabled = false;
-      profileSaveBtn.textContent = prevText;
-    }
-  });
 
-  profileAvatarContainer?.addEventListener('click', () => {
-    profileFotoInput?.click();
-  });
+          data = { user: updatedUser };
+        }
 
-  // Load profile avatar on page load
-  (function() {
-    const u = JSON.parse(localStorage.getItem('user') || '{}');
-    const profileBtn = document.getElementById('profileBtn');
-    if (profileBtn && u.avatar) {
-      const avatarUrl = `${API}/uploads/${u.avatar}`;
-      profileBtn.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>`;
-    }
-  })();
-});
+        if (!res.ok && data?.message) {
+          throw new Error(data.message);
+        }
+
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        renderSidebarProfile();
+        
+        profileSaveBtn.disabled = false;
+        profileSaveBtn.textContent = prevText;
+        
+        closeProfile();
+        
+      } catch (err) {
+        if (profileError) {
+          profileError.textContent = err.message || 'Gagal memperbarui profile.';
+          profileError.classList.remove('hidden');
+        }
+        profileSaveBtn.disabled = false;
+        profileSaveBtn.textContent = prevText;
+      }
+    });
+
+    profileAvatarContainer?.addEventListener('click', (e) => {
+      if (e.target.tagName === 'svg' || e.target.tagName === 'path') return;
+      profileFotoInput?.click();
+    });
+
+    profileFotoInput?.addEventListener('change', function () {
+      if (this.files && this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (profileAvatar) {
+            profileAvatar.src = e.target.result; 
+            profileAvatar.classList.remove('hidden');
+          }
+          if (profilePlaceholder) {
+            profilePlaceholder.classList.add('hidden');
+          }
+        };
+        reader.readAsDataURL(this.files[0]);
+      }
+    });
+
+    renderSidebarProfile();
+  });
+})();

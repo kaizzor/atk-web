@@ -1,5 +1,5 @@
 window.addEventListener("DOMContentLoaded", async () => {
-  const API = "http://localhost:3000";
+const API = window.location.origin; 
 
   const params = new URLSearchParams(location.search);
   const id = params.get("id");
@@ -85,14 +85,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     try {
       if (!id) throw new Error("Parameter id tidak ditemukan");
 
-      // Ambil data produk
       const data = await fetchItem(id);
 
       namaBarang.value  = data.namaItem     ?? "";
       keterangan.value  = data.keterangan   ?? "";
       hargaSatuan.value = data.hargaSatuan  ?? "";
 
-      // Set kategori (readonly, hanya tampil)
       if (kategori) {
         kategori.value = data.namaKategori || data.kategori || "";
       }
@@ -115,7 +113,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    // Confirm sebelum simpan
     if (!confirm("Yakin ingin menyimpan perubahan untuk produk ini?")) return;
     
     const btn = form.querySelector('button[type="submit"]');
@@ -136,7 +133,6 @@ window.addEventListener("DOMContentLoaded", async () => {
         throw new Error(err.message || `Gagal update produk (status ${res.status})`);
       }
 
-      // Success notification
       alert("Produk berhasil diupdate!");
       window.location.href = "products.html";
     } catch (err) {
@@ -149,7 +145,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 });
 
-// ====== Title/Auth/Active Link ======
 (function() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const sidebarUsername = document.getElementById('sidebarUsername');
@@ -172,7 +167,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 })();
 
-// ====== Mobile Menu Functionality ======
 document.addEventListener('DOMContentLoaded', function() {
   const mobileMenuBtn = document.getElementById('mobileMenuBtn');
   const sidebar = document.getElementById('sidebar');
@@ -227,9 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// ====== Profile Modal Logic ======
 document.addEventListener('DOMContentLoaded', function() {
-  const API = "http://localhost:3000";
   const profileBtn = document.getElementById('profileBtn');
   const profileModal = document.getElementById('profileModal');
   const profileClose = document.getElementById('profileClose');
@@ -260,23 +252,38 @@ document.addEventListener('DOMContentLoaded', function() {
     if (profileEmailInputEl) profileEmailInputEl.value = u.email || '';
     if (profilePasswordInputEl) profilePasswordInputEl.value = '';
 
-    const avatarFilename = u.avatar || null;
+    
+    const avatarUrl = u.avatar || null;
     const pImg = document.getElementById('profileAvatar');
     const pPlaceholder = document.getElementById('profileAvatarPlaceholder');
 
-    if (avatarFilename) {
-      const avatarUrl = `${API}/uploads/${avatarFilename}`;
+    if (avatarUrl) {
       if (pImg) {
         pImg.src = avatarUrl;
         pImg.classList.remove('hidden');
       }
       if (pPlaceholder) pPlaceholder.classList.add('hidden');
-      const profileBtn = document.getElementById('profileBtn');
-      if (profileBtn) profileBtn.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>`;
+
+      if (profileBtn) {
+        profileBtn.innerHTML = `
+          <img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>
+        `;
+      }
+      if (pImg && pPlaceholder) {
+            pImg.src = avatarUrl;
+            pImg.classList.remove('hidden');
+            pPlaceholder.classList.add('hidden');
+          }
+      if (profileAvatar) {
+        profileAvatar.src = avatarUrl;
+        profileAvatar.classList.remove('hidden');
+      }
+      if (profilePlaceholder) {
+        profilePlaceholder.classList.add('hidden');
+      }
     } else {
       if (pImg) pImg.classList.add('hidden');
       if (pPlaceholder) pPlaceholder.classList.remove('hidden');
-      const profileBtn = document.getElementById('profileBtn');
       if (profileBtn) profileBtn.innerHTML = '👤';
     }
 
@@ -359,30 +366,25 @@ document.addEventListener('DOMContentLoaded', function() {
       const sb = document.getElementById('sidebarUsername');
       if (sb) sb.textContent = data.user.username;
       
-      const profileBtn = document.getElementById('profileBtn');
+      const avatarUrl = data.user.avatar;
+
       if (profileBtn) {
-          if (data.user.avatar) {
-              const avatarUrl = `${API}/uploads/${data.user.avatar}`;
-              profileBtn.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>`;
-              const pImg = document.getElementById('profileAvatar');
-              const pPlaceholder = document.getElementById('profileAvatarPlaceholder');
-              if (pImg && pPlaceholder) {
-                pImg.src = avatarUrl;
-                pImg.classList.remove('hidden');
-                pPlaceholder.classList.add('hidden');
-              }
-          } else {
-              profileBtn.innerHTML = '👤';
+        if (avatarUrl) {
+          profileBtn.innerHTML = `
+            <img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>
+          `;
+          if (pImg && pPlaceholder) {
+            pImg.src = avatarUrl;
+            pImg.classList.remove('hidden');
+            pPlaceholder.classList.add('hidden');
           }
+        } else {
+          profileBtn.innerHTML = '👤';
+        }
       }
       
       alert('Profil berhasil diperbarui!');
       closeProfile();
-    } catch (err) {
-      if (profileError) {
-        profileError.textContent = 'Terjadi kesalahan koneksi.';
-        profileError.classList.remove('hidden');
-      }
     } finally {
       profileSaveBtn.disabled = false;
       profileSaveBtn.textContent = prevText;
@@ -393,13 +395,30 @@ document.addEventListener('DOMContentLoaded', function() {
     profileFotoInput?.click();
   });
 
-  // Load profile avatar on page load
+  profileFotoInput?.addEventListener('change', function () {
+    if (this.files && this.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (profileAvatar) {
+          profileAvatar.src = e.target.result; 
+          profileAvatar.classList.remove('hidden');
+        }
+        if (profilePlaceholder) {
+          profilePlaceholder.classList.add('hidden');
+        }
+      };
+      reader.readAsDataURL(this.files[0]);
+    }
+  });
+
   (function() {
     const u = JSON.parse(localStorage.getItem('user') || '{}');
     const profileBtn = document.getElementById('profileBtn');
     if (profileBtn && u.avatar) {
-      const avatarUrl = `${API}/uploads/${u.avatar}`;
-      profileBtn.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>`;
+      const avatarUrl = u.avatar;
+        profileBtn.innerHTML = `
+          <img src="${avatarUrl}" class="w-full h-full object-cover rounded-full"/>
+        `;
     }
   })();
-});
+})();
